@@ -1,0 +1,51 @@
+---
+- hosts: all
+  vars:
+    cargobin: /home/vagrant/.cargo/bin
+    rustup: "{{cargobin}}/rustup"
+  # We need to 'pre-install' a few packages for ansible to work inside the VM at all.
+  gather_facts: false
+  pre_tasks:
+    - raw: sudo apt-get -y install python-simplejson python3-apt
+    - action: setup
+
+  tasks:
+    - name: Download rustup
+      get_url: url=https://sh.rustup.rs dest=/home/vagrant/rustup.sh mode=0640
+    - name: Install rust
+      shell: sh /home/vagrant/rustup.sh -y
+    - name: Install rust nightly
+      shell: "{{rustup}} install nightly"
+    - name: User rust nightly
+      shell: "{{rustup}} default nightly"
+    - name: Install wasm support
+      command: "{{rustup}} target add wasm32-unknown-unknown"
+
+    - name: Install cargo web dependencies
+      apt: name={{item}} state=latest
+      with_items:
+        - pkg-config
+        - libssl-dev
+      become: true
+    - name: Install cargo web
+      command: "{{cargobin}}/cargo install -f cargo-web creates=/home/vagrant/.cargo/bin/cargo-web"
+
+      # All emscripten stuff. Not needed anymore?
+    #    - name: Install packages
+    #      apt: name={{item}} state=latest
+    # with_items:
+        #        - build-essential
+        #   - git-core
+          #       - python
+          #  - cmake
+          #- nodejs
+          #      become: true
+
+#    - name: Download emscripten sdk
+#      get_url: url=https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz dest=/home/vagrant/emsdk-portable.tar.gz mode=0640
+#    - name: Unpack emscripten
+#      unarchive: src=/home/vagrant/emsdk-portable.tar.gz dest=/home/vagrant/ remote_src=yes
+#    - name: Install emscripten
+#      shell: ./emsdk update && ./emsdk install latest && ./emsdk activate latest
+#      args:
+#        chdir: emsdk-portable
